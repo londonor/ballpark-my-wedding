@@ -30,6 +30,14 @@ model Tier {
   priceLowOffPeak  Float
   priceHighOffPeak Float
   blurb            String
+
+  // Inclusion model — how this tier handles food/alcohol in its price.
+  foodModel         String   @default("extra")   // "extra" | "included" | "minimum"
+  alcoholModel      String   @default("extra")   // "extra" | "included" | "minimum"
+  foodMinimum       Float?                       // $ amount; meaningful only when foodModel="minimum" (or holds combined F&B when minimumIsCombined=true)
+  alcoholMinimum    Float?                       // $ amount; meaningful only when alcoholModel="minimum"; null when minimumIsCombined=true
+  minimumIsCombined Boolean  @default(false)     // true = single F&B minimum covers both food and alcohol (stored in foodMinimum); prevents engine double-counting
+
   examples         TierExample[]
 
   @@index([destinationId, category])
@@ -42,6 +50,7 @@ model TierExample {
   pricePeak    Int
   priceOffPeak Int
   displayOrder Int
+  guestCount   Int?     // guest count the pricePeak/priceOffPeak were modeled at; null = flat / not guest-scaled
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   tier         Tier     @relation(fields: [tierId], references: [id], onDelete: Cascade)
