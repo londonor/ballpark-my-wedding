@@ -1,0 +1,16 @@
+# Secrets — keep at top
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo
+
+# Local SQLite database
+prisma/dev.db
