@@ -7,6 +7,12 @@
  *      has pricingType="flat".
  *   3. No two TierExample rows share the same tierId+displayOrder.
  *   4. Every Tier that has any TierExample rows has at least 3 of them.
+ *   5. Every Tier's foodModel and alcoholModel is "extra" | "included" | "minimum".
+ *   6. If foodModel != "minimum", foodMinimum is null. If alcoholModel != "minimum",
+ *      alcoholMinimum is null. (A minimum amount without a minimum model is a data error.)
+ *   7. If minimumIsCombined is true, alcoholMinimum is null (the combined figure
+ *      lives in foodMinimum to avoid double-counting).
+ *   8. TierExample.guestCount, where present, is a positive integer.
  *
  * Run: npm run test:data
  */
@@ -89,6 +95,73 @@ const failures: string[] = [];
   for (const r of short) {
     failures.push(
       `[min-examples] ${r.slug}/${r.category}/T${r.tierOrder} "${r.tierName}" has ${r.n} example(s) (expected >= 3)`,
+    );
+  }
+}
+
+// ── 5. foodModel / alcoholModel must be one of the allowed values ────────────
+{
+  const bad = db.prepare(`
+    SELECT d.slug, t.category, t.tierOrder, t.foodModel, t.alcoholModel
+    FROM Tier t JOIN Destination d ON t.destinationId = d.id
+    WHERE t.foodModel    NOT IN ('extra','included','minimum')
+       OR t.alcoholModel NOT IN ('extra','included','minimum')
+  `).all() as { slug: string; category: string; tierOrder: number; foodModel: string; alcoholModel: string }[];
+  for (const r of bad) {
+    failures.push(
+      `[inclusion-model] ${r.slug}/${r.category}/T${r.tierOrder} foodModel=${r.foodModel} alcoholModel=${r.alcoholModel} (must be extra|included|minimum)`,
+    );
+  }
+}
+
+// ── 6. minimum amount only allowed when matching model is "minimum" ──────────
+{
+  const badFood = db.prepare(`
+    SELECT d.slug, t.category, t.tierOrder, t.foodModel, t.foodMinimum
+    FROM Tier t JOIN Destination d ON t.destinationId = d.id
+    WHERE t.foodModel != 'minimum' AND t.foodMinimum IS NOT NULL
+  `).all() as { slug: string; category: string; tierOrder: number; foodModel: string; foodMinimum: number }[];
+  for (const r of badFood) {
+    failures.push(
+      `[orphan-foodMinimum] ${r.slug}/${r.category}/T${r.tierOrder} foodModel=${r.foodModel} but foodMinimum=${r.foodMinimum} (must be null)`,
+    );
+  }
+  const badAlc = db.prepare(`
+    SELECT d.slug, t.category, t.tierOrder, t.alcoholModel, t.alcoholMinimum
+    FROM Tier t JOIN Destination d ON t.destinationId = d.id
+    WHERE t.alcoholModel != 'minimum' AND t.alcoholMinimum IS NOT NULL
+  `).all() as { slug: string; category: string; tierOrder: number; alcoholModel: string; alcoholMinimum: number }[];
+  for (const r of badAlc) {
+    failures.push(
+      `[orphan-alcoholMinimum] ${r.slug}/${r.category}/T${r.tierOrder} alcoholModel=${r.alcoholModel} but alcoholMinimum=${r.alcoholMinimum} (must be null)`,
+    );
+  }
+}
+
+// ── 7. combined minimum: alcoholMinimum must be null ─────────────────────────
+{
+  const bad = db.prepare(`
+    SELECT d.slug, t.category, t.tierOrder, t.alcoholMinimum
+    FROM Tier t JOIN Destination d ON t.destinationId = d.id
+    WHERE t.minimumIsCombined = 1 AND t.alcoholMinimum IS NOT NULL
+  `).all() as { slug: string; category: string; tierOrder: number; alcoholMinimum: number }[];
+  for (const r of bad) {
+    failures.push(
+      `[combined-double-count] ${r.slug}/${r.category}/T${r.tierOrder} minimumIsCombined=true but alcoholMinimum=${r.alcoholMinimum} (must be null; combined value lives in foodMinimum)`,
+    );
+  }
+}
+
+// ── 8. TierExample.guestCount, where present, is a positive integer ──────────
+{
+  const bad = db.prepare(`
+    SELECT e.id, e.tierId, e.guestCount
+    FROM TierExample e
+    WHERE e.guestCount IS NOT NULL AND e.guestCount < 1
+  `).all() as { id: number; tierId: number; guestCount: number }[];
+  for (const r of bad) {
+    failures.push(
+      `[guestCount] TierExample id=${r.id} tierId=${r.tierId} guestCount=${r.guestCount} (must be positive integer or null)`,
     );
   }
 }
