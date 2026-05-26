@@ -80,8 +80,8 @@ export function CategoryStep({ wedding, category, onNext }: CategoryStepProps) {
     onNext();
   };
 
-  const handleExampleConfirm = (price: number) => {
-    setExampleForCategory(category, price);
+  const handleExampleConfirm = (price: number, guestCount: number | null) => {
+    setExampleForCategory(category, price, guestCount);
     setShowExampleModal(false);
     onNext();
   };

@@ -9,7 +9,7 @@ interface TierExampleModalProps {
   tier: TierOption;
   city: string;
   isPeak: boolean;
-  onConfirm: (price: number) => void;
+  onConfirm: (price: number, guestCount: number | null) => void;
 }
 
 export function TierExampleModal({ tier, city, isPeak, onConfirm }: TierExampleModalProps) {
@@ -19,7 +19,7 @@ export function TierExampleModal({ tier, city, isPeak, onConfirm }: TierExampleM
 
   const handleConfirm = () => {
     if (!selected) return;
-    onConfirm(isPeak ? selected.pricePeak : selected.priceOffPeak);
+    onConfirm(isPeak ? selected.pricePeak : selected.priceOffPeak, selected.guestCount);
   };
 
   const isVenue = tier.category === "venue";

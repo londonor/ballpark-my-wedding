@@ -107,7 +107,10 @@ export interface WeddingSelection {
   guestBucket: GuestBucket;
   guestMidpoint: number;
   tiers: Partial<Record<WeddingCategory, TierOption>>;
-  tierExamples?: Partial<Record<WeddingCategory, number>>;
+  // The user's picked TierExample per category. Stored as {price, guestCount}
+  // so the engine can re-scale per_head examples to the user's guest count.
+  // guestCount = null means the example's price is treated verbatim.
+  tierExamples?: Partial<Record<WeddingCategory, { price: number; guestCount: number | null }>>;
 }
 
 export interface WeddingState {

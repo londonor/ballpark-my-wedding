@@ -61,9 +61,9 @@ export function calculateEstimate(wedding: WeddingSelection): WeddingEstimateRes
   for (const cat of CATEGORY_ORDER) {
     const tier = wedding.tiers[cat];
     if (!tier) continue;
-    const examplePrice = wedding.tierExamples?.[cat];
-    const { low, high } = examplePrice !== undefined
-      ? { low: examplePrice, high: examplePrice }
+    const example = wedding.tierExamples?.[cat];
+    const { low, high } = example !== undefined
+      ? { low: example.price, high: example.price }
       : calculateCategoryTotal(tier, wedding.isPeak, wedding.guestMidpoint);
     categories.push({
       category: cat,

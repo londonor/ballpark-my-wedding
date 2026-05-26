@@ -28,7 +28,7 @@ interface EstimateContextType {
   isLastCategoryStep: boolean;
   setWedding: (w: WeddingSelection) => void;
   setTierForCategory: (category: WeddingCategory, tier: TierOption) => void;
-  setExampleForCategory: (category: WeddingCategory, price: number) => void;
+  setExampleForCategory: (category: WeddingCategory, price: number, guestCount: number | null) => void;
   reset: () => void;
 }
 
@@ -93,14 +93,17 @@ export function EstimateProvider({ children }: { children: ReactNode }) {
   );
 
   const setExampleForCategory = useCallback(
-    (category: WeddingCategory, price: number) => {
+    (category: WeddingCategory, price: number, guestCount: number | null) => {
       setState((prev) => {
         if (!prev.wedding) return prev;
         return {
           ...prev,
           wedding: {
             ...prev.wedding,
-            tierExamples: { ...(prev.wedding.tierExamples ?? {}), [category]: price },
+            tierExamples: {
+              ...(prev.wedding.tierExamples ?? {}),
+              [category]: { price, guestCount },
+            },
           },
         };
       });
