@@ -70,6 +70,7 @@ export interface TierExample {
   pricePeak: number;
   priceOffPeak: number;
   displayOrder: number;
+  guestCount: number | null;
 }
 
 export interface TierOption {
@@ -84,6 +85,11 @@ export interface TierOption {
   priceLowOffPeak: number;
   priceHighOffPeak: number;
   blurb: string;
+  foodModel: string;        // "extra" | "included" | "minimum"
+  alcoholModel: string;     // "extra" | "included" | "minimum"
+  foodMinimum: number | null;
+  alcoholMinimum: number | null;
+  minimumIsCombined: boolean;
   examples?: TierExample[];
 }
 
