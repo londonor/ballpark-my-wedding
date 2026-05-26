@@ -33,17 +33,28 @@ export function CategoryStep({ wedding, category, onNext }: CategoryStepProps) {
     wedding.tiers[category] ?? null,
   );
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [showExampleModal, setShowExampleModal] = useState(false);
 
   useEffect(() => {
     setLoading(true);
+    setLoadError(false);
     fetch(`/api/tiers?destinationId=${wedding.destinationId}&category=${category}`)
       .then((r) => r.json())
       .then((data) => {
-        if (Array.isArray(data)) setTiers(data);
+        if (Array.isArray(data)) {
+          setTiers(data);
+        } else {
+          console.error("[CategoryStep] /api/tiers returned non-array:", data);
+          setLoadError(true);
+        }
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch((err) => {
+        console.error("[CategoryStep] /api/tiers fetch failed:", err);
+        setLoadError(true);
+        setLoading(false);
+      });
   }, [wedding.destinationId, category]);
 
   const getTierSpread = (tier: TierOption) => {
@@ -94,6 +105,10 @@ export function CategoryStep({ wedding, category, onNext }: CategoryStepProps) {
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-16 rounded-2xl bg-sand-100 animate-pulse" />
           ))}
+        </div>
+      ) : loadError ? (
+        <div className="mb-8 rounded-2xl border border-coral-200 bg-coral-50 p-5 text-coral-700 text-sm">
+          Couldn&apos;t load options — please refresh.
         </div>
       ) : (
         <div className="space-y-3 mb-8">

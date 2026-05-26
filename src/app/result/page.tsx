@@ -52,8 +52,8 @@ export default function ResultPage() {
           setShareUrl(`${window.location.origin}/report/${data.shareToken}`);
           setShareToken(data.shareToken);
         }
-      } catch {
-        // silently fail
+      } catch (err) {
+        console.error("[result] Failed to create share token via /api/report:", err);
       }
     })();
     return () => { cancelled = true; };
@@ -80,8 +80,8 @@ export default function ResultPage() {
         if (!cancelled && typeof data.insight === "string") {
           setInsight(data.insight);
         }
-      } catch {
-        // silently fail
+      } catch (err) {
+        console.error("[result] Failed to fetch LLM insight:", err);
       } finally {
         clearTimeout(slowTimer);
         if (!cancelled) {
