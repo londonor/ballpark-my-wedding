@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start -p 3002",
     "lint": "eslint",
-    "db:import": "tsx scripts/import-db.ts"
+    "db:import": "tsx scripts/import-db.ts",
+    "test:data": "tsx scripts/check-data-integrity.ts"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.7.0",
