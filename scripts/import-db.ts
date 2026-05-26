@@ -77,6 +77,7 @@ interface ExampleCsvRow {
   price_peak: string;
   price_off_peak: string;
   display_order: string;
+  guestCount?: string;
 }
 
 interface ExampleRow {
@@ -87,6 +88,7 @@ interface ExampleRow {
   pricePeak: number;
   priceOffPeak: number;
   displayOrder: number;
+  guestCount: number | null;
 }
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -108,6 +110,11 @@ interface CsvRow {
   price_low_off_peak: string;
   price_high_off_peak: string;
   blurb: string;
+  foodModel?: string;
+  alcoholModel?: string;
+  foodMinimum?: string;
+  alcoholMinimum?: string;
+  minimumIsCombined?: string;
 }
 
 interface TierRow {
@@ -120,6 +127,11 @@ interface TierRow {
   priceLowOffPeak: number;
   priceHighOffPeak: number;
   blurb: string;
+  foodModel: string;
+  alcoholModel: string;
+  foodMinimum: number | null;
+  alcoholMinimum: number | null;
+  minimumIsCombined: number; // SQLite boolean: 0 or 1
 }
 
 interface DestGroup {
@@ -153,6 +165,30 @@ function parsePrice(s: string): number | null {
 function parseTierOrder(s: string): number | null {
   const n = parseInt(s, 10);
   return isNaN(n) || n < 1 ? null : n;
+}
+
+// Empty / missing cell → null. Otherwise parse as non-negative number.
+function parseOptionalPrice(s: string | undefined): number | null {
+  if (s === undefined || s.trim() === "") return null;
+  const n = parseFloat(s);
+  return isNaN(n) || n < 0 ? null : n;
+}
+
+// Empty / missing cell → null. Otherwise parse as positive integer.
+function parseOptionalPositiveInt(s: string | undefined): number | null {
+  if (s === undefined || s.trim() === "") return null;
+  const n = parseInt(s, 10);
+  return isNaN(n) || n < 1 ? null : n;
+}
+
+const VALID_MODELS = new Set(["extra", "included", "minimum"]);
+function parseModel(s: string | undefined): string {
+  const v = (s ?? "").trim().toLowerCase();
+  return VALID_MODELS.has(v) ? v : "extra";
+}
+
+function parseBool(s: string | undefined): boolean {
+  return (s ?? "").trim().toLowerCase() === "true";
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
@@ -331,6 +367,11 @@ function main() {
       priceLowOffPeak,
       priceHighOffPeak,
       blurb: row.blurb.trim(),
+      foodModel: parseModel(row.foodModel),
+      alcoholModel: parseModel(row.alcoholModel),
+      foodMinimum: parseOptionalPrice(row.foodMinimum),
+      alcoholMinimum: parseOptionalPrice(row.alcoholMinimum),
+      minimumIsCombined: parseBool(row.minimumIsCombined) ? 1 : 0,
     });
   });
 
@@ -395,7 +436,11 @@ function main() {
       const exampleLabel = (row.example_label ?? "").trim();
       if (!exampleLabel) continue;
 
-      exampleRows.push({ citySlug, category: categorySlug, tierOrder, exampleLabel, pricePeak, priceOffPeak, displayOrder });
+      exampleRows.push({
+        citySlug, category: categorySlug, tierOrder, exampleLabel,
+        pricePeak, priceOffPeak, displayOrder,
+        guestCount: parseOptionalPositiveInt(row.guestCount),
+      });
     }
 
     console.log(`Parsed ${exampleRows.length} tier example row(s) from tier_examples.csv\n`);
@@ -418,17 +463,19 @@ function main() {
   const insertTier = db.prepare(`
     INSERT INTO "Tier"
       ("destinationId", category, "tierName", "tierOrder", "pricingType",
-       "priceLowPeak", "priceHighPeak", "priceLowOffPeak", "priceHighOffPeak", blurb)
+       "priceLowPeak", "priceHighPeak", "priceLowOffPeak", "priceHighOffPeak", blurb,
+       "foodModel", "alcoholModel", "foodMinimum", "alcoholMinimum", "minimumIsCombined")
     VALUES
       (@destinationId, @category, @tierName, @tierOrder, @pricingType,
-       @priceLowPeak, @priceHighPeak, @priceLowOffPeak, @priceHighOffPeak, @blurb)
+       @priceLowPeak, @priceHighPeak, @priceLowOffPeak, @priceHighOffPeak, @blurb,
+       @foodModel, @alcoholModel, @foodMinimum, @alcoholMinimum, @minimumIsCombined)
   `);
 
   const insertExample = db.prepare(`
     INSERT INTO "TierExample"
-      ("tierId", "exampleLabel", "pricePeak", "priceOffPeak", "displayOrder", "createdAt", "updatedAt")
+      ("tierId", "exampleLabel", "pricePeak", "priceOffPeak", "displayOrder", "guestCount", "createdAt", "updatedAt")
     VALUES
-      (@tierId, @exampleLabel, @pricePeak, @priceOffPeak, @displayOrder, @createdAt, @updatedAt)
+      (@tierId, @exampleLabel, @pricePeak, @priceOffPeak, @displayOrder, @guestCount, @createdAt, @updatedAt)
   `);
 
   const runImport = db.transaction(() => {
@@ -467,6 +514,11 @@ function main() {
           priceLowOffPeak: t.priceLowOffPeak,
           priceHighOffPeak: t.priceHighOffPeak,
           blurb: t.blurb,
+          foodModel: t.foodModel,
+          alcoholModel: t.alcoholModel,
+          foodMinimum: t.foodMinimum,
+          alcoholMinimum: t.alcoholMinimum,
+          minimumIsCombined: t.minimumIsCombined,
         });
         tierIdMap.set(`${group.slug}:${t.category}:${t.tierOrder}`, Number(tierResult.lastInsertRowid));
       }
@@ -488,6 +540,7 @@ function main() {
           pricePeak: ex.pricePeak,
           priceOffPeak: ex.priceOffPeak,
           displayOrder: ex.displayOrder,
+          guestCount: ex.guestCount,
           createdAt: now,
           updatedAt: now,
         });

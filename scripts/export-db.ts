@@ -60,21 +60,30 @@ const destinations = db.prepare(`
 
 const getTiers = db.prepare(`
   SELECT category, tierOrder, tierName, pricingType,
-         priceLowPeak, priceHighPeak, priceLowOffPeak, priceHighOffPeak, blurb
+         priceLowPeak, priceHighPeak, priceLowOffPeak, priceHighOffPeak, blurb,
+         foodModel, alcoholModel, foodMinimum, alcoholMinimum, minimumIsCombined
   FROM Tier
   WHERE destinationId = ?
   ORDER BY category, tierOrder
 `);
 
-const HEADER = "city,state,slug,market_type,peak_season_start,peak_season_end,llm_context,category,tier_order,tier_name,pricing_type,price_low_peak,price_high_peak,price_low_off_peak,price_high_off_peak,blurb";
+const HEADER = "city,state,slug,market_type,peak_season_start,peak_season_end,llm_context,category,tier_order,tier_name,pricing_type,price_low_peak,price_high_peak,price_low_off_peak,price_high_off_peak,blurb,foodModel,alcoholModel,foodMinimum,alcoholMinimum,minimumIsCombined";
 
 const lines: string[] = [HEADER];
+
+// null/undefined → "" (round-trips back to null on import)
+function csvOptionalNumber(v: number | null): string {
+  return v === null || v === undefined ? "" : csvField(v);
+}
 
 for (const dest of destinations) {
   const tiers = getTiers.all(dest.id) as {
     category: string; tierOrder: number; tierName: string; pricingType: string;
     priceLowPeak: number; priceHighPeak: number;
     priceLowOffPeak: number; priceHighOffPeak: number; blurb: string;
+    foodModel: string; alcoholModel: string;
+    foodMinimum: number | null; alcoholMinimum: number | null;
+    minimumIsCombined: number;  // SQLite stores boolean as 0/1
   }[];
 
   for (const tier of tiers) {
@@ -95,6 +104,11 @@ for (const dest of destinations) {
       csvField(tier.priceLowOffPeak),
       csvField(tier.priceHighOffPeak),
       csvField(tier.blurb),
+      csvField(tier.foodModel),
+      csvField(tier.alcoholModel),
+      csvOptionalNumber(tier.foodMinimum),
+      csvOptionalNumber(tier.alcoholMinimum),
+      csvField(tier.minimumIsCombined ? "true" : "false"),
     ].join(",");
     lines.push(row);
   }
