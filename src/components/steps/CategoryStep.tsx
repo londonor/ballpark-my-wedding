@@ -5,6 +5,7 @@ import { useEstimate } from "@/context/EstimateContext";
 import { Button } from "@/components/ui/Button";
 import { TierExampleModal } from "@/components/TierExampleModal";
 import { calculateCategoryTotal, formatCurrency } from "@/lib/calculations";
+import { venueInclusionCardLabel } from "@/lib/inclusion";
 import { CATEGORY_LABELS } from "@/types";
 import type { WeddingCategory, TierOption, WeddingSelection } from "@/types";
 
@@ -125,6 +126,8 @@ export function CategoryStep({ wedding, category, onNext }: CategoryStepProps) {
               : isPerHead
                 ? `${formatCurrency(low)} – ${formatCurrency(high)} /person`
                 : `${formatCurrency(low)} – ${formatCurrency(high)}`;
+            const venueInclusionLabel =
+              category === "venue" ? venueInclusionCardLabel(tier) : null;
             return (
               <button
                 key={tier.id}
@@ -143,6 +146,11 @@ export function CategoryStep({ wedding, category, onNext }: CategoryStepProps) {
                     {priceText}
                   </p>
                 </div>
+                {venueInclusionLabel && (
+                  <p className={`text-xs mt-1.5 ${isSelected ? "text-sage-600" : "text-sand-500"}`}>
+                    {venueInclusionLabel}
+                  </p>
+                )}
                 {isSelected && (
                   <p className="text-sand-600 text-sm leading-relaxed mt-2">
                     {tier.blurb}
