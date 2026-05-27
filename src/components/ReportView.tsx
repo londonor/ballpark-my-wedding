@@ -92,24 +92,39 @@ export function ReportView({
       )}
 
       {/* Category breakdowns */}
-      {result.categories.map((cat, index) => (
-        <Card key={index} className="mb-4">
-          <div className="flex items-start justify-between mb-3">
-            <h3 className="font-semibold text-sand-800">
-              {CATEGORY_LABELS[cat.category as WeddingCategory] ?? cat.category}
-            </h3>
-            <p className="font-semibold text-sand-800 shrink-0 ml-4">
-              {cat.totalLow === 0 && cat.totalHigh === 0
-                ? "$0"
-                : `${formatCurrency(cat.totalLow)} – ${formatCurrency(cat.totalHigh)}`}
-            </p>
-          </div>
-          <p className="text-sand-500 text-sm mb-1">{cat.tierName}</p>
-          {cat.blurb && (
-            <p className="text-sand-400 text-xs leading-relaxed font-light">{cat.blurb}</p>
-          )}
-        </Card>
-      ))}
+      {result.categories.map((cat, index) => {
+        const isZero = cat.totalLow === 0 && cat.totalHigh === 0;
+        // Tier name and blurb are suppressed when the engine zeroed this
+        // category because the venue includes it — the user's tier pick (if
+        // any) was an auto-pick on a locked step and is not meaningful copy.
+        const hideTierDetails = isZero && !!cat.inclusionNote;
+        const priceLabel = isZero
+          ? cat.inclusionNote
+            ? "Included"
+            : "$0"
+          : `${formatCurrency(cat.totalLow)} – ${formatCurrency(cat.totalHigh)}`;
+        return (
+          <Card key={index} className="mb-4">
+            <div className="flex items-start justify-between mb-3">
+              <h3 className="font-semibold text-sand-800">
+                {CATEGORY_LABELS[cat.category as WeddingCategory] ?? cat.category}
+              </h3>
+              <p className="font-semibold text-sand-800 shrink-0 ml-4">{priceLabel}</p>
+            </div>
+            {!hideTierDetails && (
+              <p className="text-sand-500 text-sm mb-1">{cat.tierName}</p>
+            )}
+            {!hideTierDetails && cat.blurb && (
+              <p className="text-sand-400 text-xs leading-relaxed font-light">{cat.blurb}</p>
+            )}
+            {cat.inclusionNote && (
+              <p className={`text-sand-500 text-xs leading-relaxed ${hideTierDetails ? "" : "mt-2 pt-2 border-t border-sand-200"}`}>
+                {cat.inclusionNote}
+              </p>
+            )}
+          </Card>
+        );
+      })}
 
       {/* Brand on shared view */}
       {isShared && (

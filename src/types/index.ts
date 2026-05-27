@@ -125,6 +125,11 @@ export interface CategoryEstimate {
   pricingType: string;
   totalLow: number;
   totalHigh: number;
+  // Presentation-only — set by the results page (not the estimate engine) to
+  // explain why this category's total is what it is (e.g. "Included with your
+  // venue.", "Your venue's catering minimum applied here."). Persisted into
+  // saved Report snapshots so shared reports stay legible.
+  inclusionNote?: string;
 }
 
 export interface WeddingEstimateResult {

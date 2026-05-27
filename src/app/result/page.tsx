@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { ShareModal } from "@/components/ShareModal";
 import { calculateEstimate } from "@/lib/calculations";
 import { MONTH_NAMES } from "@/lib/calculations";
+import { decorateInclusion } from "@/lib/inclusion";
 import type { WeddingEstimateResult } from "@/types";
 
 export default function ResultPage() {
@@ -33,7 +34,12 @@ export default function ResultPage() {
       router.replace("/");
       return;
     }
-    setResult(calculateEstimate(state.wedding));
+    const computed = calculateEstimate(state.wedding);
+    // Attach UI-only inclusionNote strings to catering/bar entries when the
+    // venue's inclusion model adjusted them. This runs in the consumer, not
+    // in the engine, so calculations.ts stays a pure numeric function.
+    decorateInclusion(computed, state.wedding);
+    setResult(computed);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Eagerly create share token once result is ready
