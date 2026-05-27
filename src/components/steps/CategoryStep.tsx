@@ -5,16 +5,34 @@ import { useEstimate } from "@/context/EstimateContext";
 import { Button } from "@/components/ui/Button";
 import { TierExampleModal } from "@/components/TierExampleModal";
 import { calculateCategoryTotal, formatCurrency } from "@/lib/calculations";
-import { venueInclusionCardLabel, venueIncludesCategory } from "@/lib/inclusion";
+import {
+  venueInclusionCardLabel,
+  venueIncludesCategory,
+  firstExampleLabel,
+} from "@/lib/inclusion";
 import { CATEGORY_LABELS } from "@/types";
 import type { WeddingCategory, TierOption, WeddingSelection } from "@/types";
 
-// Copy shown above the tier list when the venue's inclusion model locks
-// this step. Brand voice: calm, plain, knowledgeable-friend.
-const LOCKED_COPY: Partial<Record<WeddingCategory, string>> = {
-  catering: "Your venue includes catering, so there's no separate choice to make here. Continue when you're ready.",
-  bar:      "Your venue includes the bar, so there's no separate choice to make here. Continue when you're ready.",
-};
+/**
+ * Builds the locked-step banner copy.
+ *
+ * Framed as a tier-class observation, not a venue-specific claim — the
+ * popup examples are anchors for the user's mental image, never real
+ * bookings. When the venue tier has at least one example, the label of
+ * the first example (display_order = 1) personalizes the lead-in.
+ * When there are no examples, falls back to a generic tier-class phrasing.
+ */
+function buildLockedBanner(
+  category: WeddingCategory,
+  venueTier: TierOption | undefined,
+): string {
+  const noun = category === "catering" ? "catering" : "the bar";
+  const anchor = firstExampleLabel(venueTier);
+  if (anchor) {
+    return `Venues like ${anchor} at this price range typically include ${noun}, so there's no separate choice to make here. Continue when you're ready.`;
+  }
+  return `Venues at this tier typically include ${noun}, so there's no separate choice to make here. Continue when you're ready.`;
+}
 
 interface CategoryStepProps {
   wedding: WeddingSelection;
@@ -125,7 +143,7 @@ export function CategoryStep({ wedding, category, onNext }: CategoryStepProps) {
       </h1>
       {isLocked ? (
         <div className="mb-6 rounded-2xl border border-sage-200 bg-sage-50 p-4 text-sage-800 text-sm leading-relaxed">
-          {LOCKED_COPY[category]}
+          {buildLockedBanner(category, wedding.tiers.venue)}
         </div>
       ) : (
         <p className="text-sand-500 mb-6">

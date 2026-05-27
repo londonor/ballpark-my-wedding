@@ -21,10 +21,24 @@ import type {
 export function venueInclusionCardLabel(venueTier: TierOption): string | null {
   const food = venueTier.foodModel === "included";
   const alc = venueTier.alcoholModel === "included";
-  if (food && alc) return "Catering and bar included";
-  if (food) return "Catering included";
-  if (alc) return "Bar included";
+  if (food && alc) return "Typically includes catering and bar";
+  if (food) return "Typically includes catering";
+  if (alc) return "Typically includes bar";
   return null;
+}
+
+/**
+ * Pulls the lowest-displayOrder example label from a tier, used to anchor
+ * copy like "Venues like [label] at this price range typically include …".
+ * Returns null if the tier has no examples. The API already sorts examples
+ * by displayOrder ascending, but we sort defensively in case a caller
+ * supplies an unsorted tier.
+ */
+export function firstExampleLabel(tier: TierOption | undefined): string | null {
+  const examples = tier?.examples;
+  if (!examples || examples.length === 0) return null;
+  const sorted = [...examples].sort((a, b) => a.displayOrder - b.displayOrder);
+  return sorted[0].exampleLabel ?? null;
 }
 
 /**
@@ -46,11 +60,15 @@ export function venueIncludesCategory(
 
 // ─── Results-page inclusion notes ─────────────────────────────────────────────
 
-const NOTE_INCLUDED = "Included with your venue.";
-const NOTE_FOOD_MIN = "Your venue has a catering minimum, and your selected tier came in below it. The estimate reflects the minimum.";
-const NOTE_BAR_MIN  = "Your venue has a bar minimum, and your selected tier came in below it. The estimate reflects the minimum.";
+// Copy framed as tier-class observations, not venue-specific claims —
+// the popup examples are anchors for the user's mental image, not real bookings.
+const NOTE_INCLUDED = "Typically included at this venue tier.";
+const NOTE_FOOD_MIN =
+  "Venues at this tier typically require a catering minimum. Your selected tier came in below it, so the estimate reflects the minimum.";
+const NOTE_BAR_MIN =
+  "Venues at this tier typically require a bar minimum. Your selected tier came in below it, so the estimate reflects the minimum.";
 const NOTE_COMBINED_ANCHOR =
-  "Your venue requires a combined food and beverage minimum. The estimate reflects that minimum here, with the bar rolled in.";
+  "Venues at this tier typically require a combined food and beverage minimum. Your selections came in below it, so the estimate reflects the minimum here, with the bar rolled in.";
 const NOTE_COMBINED_FOLDED = "Combined with catering above.";
 
 /**
