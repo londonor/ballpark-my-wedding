@@ -5,9 +5,16 @@ import { useEstimate } from "@/context/EstimateContext";
 import { Button } from "@/components/ui/Button";
 import { TierExampleModal } from "@/components/TierExampleModal";
 import { calculateCategoryTotal, formatCurrency } from "@/lib/calculations";
-import { venueInclusionCardLabel } from "@/lib/inclusion";
+import { venueInclusionCardLabel, venueIncludesCategory } from "@/lib/inclusion";
 import { CATEGORY_LABELS } from "@/types";
 import type { WeddingCategory, TierOption, WeddingSelection } from "@/types";
+
+// Copy shown above the tier list when the venue's inclusion model locks
+// this step. Brand voice: calm, plain, knowledgeable-friend.
+const LOCKED_COPY: Partial<Record<WeddingCategory, string>> = {
+  catering: "Your venue includes catering, so there's no separate choice to make here. Continue when you're ready.",
+  bar:      "Your venue includes the bar, so there's no separate choice to make here. Continue when you're ready.",
+};
 
 interface CategoryStepProps {
   wedding: WeddingSelection;
@@ -58,6 +65,20 @@ export function CategoryStep({ wedding, category, onNext }: CategoryStepProps) {
       });
   }, [wedding.destinationId, category]);
 
+  // When the selected venue includes this category, this step locks:
+  // tiers render non-interactive, an explanatory line shows, and Continue
+  // is enabled without requiring a tier pick. We silently pin tier 1 to
+  // the wedding state so the results page still has a category entry to
+  // attach the "included with your venue" note to.
+  const isLocked = venueIncludesCategory(wedding.tiers.venue, category);
+
+  useEffect(() => {
+    if (isLocked && tiers.length > 0 && !selectedTier) {
+      setSelected(tiers[0]);
+      setTierForCategory(category, tiers[0]);
+    }
+  }, [isLocked, tiers, selectedTier, category, setTierForCategory]);
+
   const getTierSpread = (tier: TierOption) => {
     const { low, high } = calculateCategoryTotal(tier, wedding.isPeak, wedding.guestMidpoint);
     return high - low;
@@ -67,6 +88,7 @@ export function CategoryStep({ wedding, category, onNext }: CategoryStepProps) {
     (tier.examples?.length ?? 0) > 0 && getTierSpread(tier) > 5_000;
 
   const handleSelect = (tier: TierOption) => {
+    if (isLocked) return; // ignore clicks on locked-step cards
     setSelected(tier);
     setTierForCategory(category, tier);
   };
@@ -74,6 +96,10 @@ export function CategoryStep({ wedding, category, onNext }: CategoryStepProps) {
   const exampleChosen = wedding.tierExamples?.[category] !== undefined;
 
   const handleContinue = () => {
+    if (isLocked) {
+      onNext();
+      return;
+    }
     if (selectedTier && tierNeedsExample(selectedTier) && !exampleChosen) {
       setShowExampleModal(true);
       return;
@@ -87,7 +113,7 @@ export function CategoryStep({ wedding, category, onNext }: CategoryStepProps) {
     onNext();
   };
 
-  const canContinue = !!selectedTier;
+  const canContinue = isLocked || !!selectedTier;
 
   return (
     <div>
@@ -97,9 +123,15 @@ export function CategoryStep({ wedding, category, onNext }: CategoryStepProps) {
       <h1 className="font-display text-2xl sm:text-3xl text-sand-900 mb-2 font-bold">
         {CATEGORY_INTROS[category]}
       </h1>
-      <p className="text-sand-500 mb-6">
-        Choose your {CATEGORY_LABELS[category].toLowerCase()} tier. You&apos;ll see prices on the results page.
-      </p>
+      {isLocked ? (
+        <div className="mb-6 rounded-2xl border border-sage-200 bg-sage-50 p-4 text-sage-800 text-sm leading-relaxed">
+          {LOCKED_COPY[category]}
+        </div>
+      ) : (
+        <p className="text-sand-500 mb-6">
+          Choose your {CATEGORY_LABELS[category].toLowerCase()} tier. You&apos;ll see prices on the results page.
+        </p>
+      )}
 
       {loading ? (
         <div className="space-y-3">
@@ -128,21 +160,24 @@ export function CategoryStep({ wedding, category, onNext }: CategoryStepProps) {
                 : `${formatCurrency(low)} – ${formatCurrency(high)}`;
             const venueInclusionLabel =
               category === "venue" ? venueInclusionCardLabel(tier) : null;
+            const baseClasses = "w-full text-left rounded-2xl border-2 p-5 transition-all";
+            const interactiveClasses = isSelected
+              ? "border-sage-500 bg-sage-50 shadow-sm cursor-pointer"
+              : "border-sand-200 bg-white hover:border-sand-300 cursor-pointer";
+            const lockedClasses = "border-sand-200 bg-sand-50 opacity-60 cursor-not-allowed";
             return (
               <button
                 key={tier.id}
                 onClick={() => handleSelect(tier)}
-                className={`w-full text-left rounded-2xl border-2 p-5 transition-all cursor-pointer ${
-                  isSelected
-                    ? "border-sage-500 bg-sage-50 shadow-sm"
-                    : "border-sand-200 bg-white hover:border-sand-300"
-                }`}
+                disabled={isLocked}
+                aria-disabled={isLocked}
+                className={`${baseClasses} ${isLocked ? lockedClasses : interactiveClasses}`}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <p className={`font-medium ${isSelected ? "text-sage-700" : "text-sand-800"}`}>
+                  <p className={`font-medium ${isSelected && !isLocked ? "text-sage-700" : "text-sand-800"}`}>
                     {tier.tierName}
                   </p>
-                  <p className={`text-sm font-semibold shrink-0 ${isSelected ? "text-sage-600" : "text-sand-600"}`}>
+                  <p className={`text-sm font-semibold shrink-0 ${isSelected && !isLocked ? "text-sage-600" : "text-sand-600"}`}>
                     {priceText}
                   </p>
                 </div>
@@ -151,7 +186,7 @@ export function CategoryStep({ wedding, category, onNext }: CategoryStepProps) {
                     {venueInclusionLabel}
                   </p>
                 )}
-                {isSelected && (
+                {!isLocked && isSelected && (
                   <p className="text-sand-600 text-sm leading-relaxed mt-2">
                     {tier.blurb}
                   </p>
